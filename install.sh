@@ -18,20 +18,15 @@ fi
 
 # Check if there are updates and upgrades available
 check_updates() {
-    updates_available=0
-    upgrades_available=0
-
-    # Check for updates
-    sudo apt-get update -q=2 --dry-run | grep -qP '^\d+ upgraded,' && updates_available=1
-
-    # Check for upgrades
-    sudo apt-get upgrade -s -q=2 | grep -qP '^\d+ upgraded,' && upgrades_available=1
-
-    return $((updates_available + upgrades_available))
+    # Check for updates using dry-run upgrade which also implies an update check
+    sudo apt upgrade --dry-run | grep -qP '^\d+ upgraded,' && return 1
+    return 0
 }
 
 # Ask the user if they want to proceed with system updates and upgrades only if updates are available
-if [[ "$(check_updates)" -gt 0 ]]; then
+if check_updates; then
+    echo "No updates or upgrades available. Skipping updates and upgrades."
+else
     user_choice=$(get_user_choice "Updates or upgrades are available. Do you want to proceed with system updates and upgrades? (y/n): ")
     if [[ "$user_choice" == "y" ]]; then
         echo "Updating and upgrading the system..."
@@ -40,18 +35,17 @@ if [[ "$(check_updates)" -gt 0 ]]; then
         echo "System updates and upgrades completed."
         
         # Ask the user if they want to reboot
-        reboot_choice=$(get_user_choice "Do you want to reboot now? (y/n): (Recommended for system changes to take effect) ")
+        reboot_choice=$(get_user_choice "Do you want to reboot now? (y/n): (Required to continue installing) ")
         if [[ "$reboot_choice" == "y" ]]; then
             echo "Rebooting the system..."
             sudo reboot
         else
-            echo "You may want to reboot the system later for changes to take full effect."
+            echo "You must reboot the system dependecies to be properly loaded. Exiting Installation!"
+            exit 0
         fi
     else
         echo "Skipping updates and upgrades."
     fi
-else
-    echo "No updates or upgrades available. Skipping updates and upgrades."
 fi
 
 # Install necessary packages
